@@ -11,6 +11,9 @@ from matplotlib.path import Path
 FOLDER_INPUT = "./data/raw"
 FOLDER_OUTPUT = "./data/processed"
 
+LABEL_DATA_SELECTED = "selected"
+LABEL_DATA_UNSELECTED = "unselected"
+
 class DataLabel(object): 
 
     def __init__(self): 
@@ -62,8 +65,6 @@ class Dataset(object):
     def __repr__(self): 
         return "\n".join(self._files_path)
 
-
-
 class Controller(object): 
 
     def __init__(self,dataset,folder_output): 
@@ -90,8 +91,6 @@ class Controller(object):
         data = self._create_data(X,y)
         self._save_data(data)
 
-
-
 class Window(object): 
 
     def __init__(self,dataset,controller):
@@ -99,74 +98,77 @@ class Window(object):
         self._dataset = dataset
         self._data = None
 
-        self.fig, self.ax = plt.subplots()
+        self._fig, self._ax = plt.subplots()
         plt.subplots_adjust(bottom=0.2)
-        axprev = plt.axes([0.7, 0.05, 0.1, 0.075])
-        axnext = plt.axes([0.81, 0.05, 0.1, 0.075])
-        self.bnext = Button(axnext, 'next')
-        self.bnext.on_clicked(self.on_clicked_next)
-        self.baext = Button(axprev, 'clear')
-        self.baext.on_clicked(self.on_clicked_clear)
+        ax_clear = plt.axes([0.7, 0.05, 0.1, 0.075])
+        ax_next = plt.axes([0.81, 0.05, 0.1, 0.075])
+        self._btn_next = Button(ax_next, 'next')
+        self._btn_next.on_clicked(self.on_clicked_next)
+        self._btn_clear = Button(ax_clear, 'clear')
+        self._btn_clear.on_clicked(self.on_clicked_clear)
 
-        self.alpha_other = 0.10
-        self.canvas = self.ax.figure.canvas
+        self._alpha_other = 0.10
+        self._canvas = self._ax.figure.canvas
 
-        self.refresh_data()
+        self._refresh_data()
 
     def on_clicked_next(self, event):
-        self.refresh_data()
+        self._refresh_data()
 
     def on_clicked_clear(self,event):
-        self.plot_data()
+        self._plot_data()
 
-    def update_data(self): 
-        data = self._dataset.next()
-        if(not data.empty):
-            self._data = data
-
-    def plot_data(self): 
-        self.plot_clear()
-        self.ax.set_title(self._dataset.get_current_file_path())
-        pts = self.ax.scatter(self._data.iloc[:,0],self._data.iloc[:,1])
-
-        self.collection = pts
-        self.xys = self.collection.get_offsets()
-        self.Npts = len(self.xys)
-
-        self.fc = self.collection.get_facecolors()
-        if len(self.fc) == 0:
-            raise ValueError('Collection must have a facecolor')
-        elif len(self.fc) == 1:
-            self.fc = np.tile(self.fc, (self.Npts, 1))
-
-        self.poly = PolygonSelector(self.ax, self.onselect)
-        self.ind = []
-        self.canvas.draw()
-
-    def onselect(self, verts):
+    def on_select(self, verts):
         path = Path(verts)
-        self.ind = np.nonzero(path.contains_points(self.xys))[0]
-        self.fc[:, -1] = self.alpha_other
-        self.fc[self.ind, -1] = 1
-        self.collection.set_facecolors(self.fc)
-        self.canvas.draw_idle()
+        self._ind = np.nonzero(path.contains_points(self._xys))[0]
+        self._fc[:, -1] = self._alpha_other
+        self._fc[self._ind, -1] = 1
+        self._collection.set_facecolors(self._fc)
+        self._canvas.draw_idle()
 
         X = []
         y = []
         for row in self._data.itertuples():
-            _y = "unselect"
-            if(row[0] in self.ind): 
-                _y = "select"
+            _y =LABEL_DATA_UNSELECTED
+            if(row[0] in self._ind): 
+                _y = LABEL_DATA_SELECTED
             X.append([row[1],row[2]])
             y.append(_y)
         self._controller.create_data(X,y)
 
-    def plot_clear(self):
-        self.ax.clear()
+    def _update_data(self): 
+        data = self._dataset.next()
+        if(not data.empty):
+            self._data = data
+        else: 
+            print("all csv has been read")
+            exit()
 
-    def refresh_data(self): 
-        self.update_data()
-        self.plot_data()
+    def _plot_data(self): 
+        self._plot_clear()
+        self._ax.set_title(self._dataset.get_current_file_path())
+        pts = self._ax.scatter(self._data.iloc[:,0],self._data.iloc[:,1])
+
+        self._collection = pts
+        self._xys = self._collection.get_offsets()
+        self._n_pts = len(self._xys)
+
+        self._fc = self._collection.get_facecolors()
+        if len(self._fc) == 0:
+            raise ValueError('Collection must have a facecolor')
+        elif len(self._fc) == 1:
+            self._fc = np.tile(self._fc, (self._n_pts, 1))
+
+        self._poly = PolygonSelector(self._ax, self.on_select)
+        self._ind = []
+        self._canvas.draw()
+
+    def _plot_clear(self):
+        self._ax.clear()
+
+    def _refresh_data(self): 
+        self._update_data()
+        self._plot_data()
 
     def show(self): 
         plt.show()
