@@ -1,0 +1,9 @@
+# vscode 
+.vscode/
+
+#python script 
+_gen_fake_data.py
+
+#csv 
+*csv 
+
