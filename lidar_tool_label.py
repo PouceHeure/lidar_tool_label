@@ -11,8 +11,8 @@ from matplotlib.path import Path
 FOLDER_INPUT = "./data/raw"
 FOLDER_OUTPUT = "./data/processed"
 
-LABEL_DATA_SELECTED = "selected"
-LABEL_DATA_UNSELECTED = "unselected"
+LABEL_DATA_SELECTED = 1
+LABEL_DATA_UNSELECTED = 0
 
 class DataLabel(object): 
 
@@ -60,7 +60,9 @@ class Dataset(object):
             file_path = random.choice(self._files_path)
         self._current_file_path = file_path
         self._files_path.remove(file_path)
-        return pd.read_csv(file_path,header=None)
+        df = pd.read_csv(file_path,header=None,delimiter=';')
+        df = df[~ (df.iloc[:, 1] >= 4)]  
+        return df 
 
     def __repr__(self): 
         return "\n".join(self._files_path)
@@ -98,7 +100,8 @@ class Window(object):
         self._dataset = dataset
         self._data = None
 
-        self._fig, self._ax = plt.subplots()
+        self._fig = plt.figure()
+        self._ax = self._fig .add_subplot(111, projection='polar')
         plt.subplots_adjust(bottom=0.2)
         ax_clear = plt.axes([0.7, 0.05, 0.1, 0.075])
         ax_next = plt.axes([0.81, 0.05, 0.1, 0.075])
@@ -107,7 +110,7 @@ class Window(object):
         self._btn_clear = Button(ax_clear, 'clear')
         self._btn_clear.on_clicked(self.on_clicked_clear)
 
-        self._alpha_other = 0.10
+        self._alpha_other = 0.01
         self._canvas = self._ax.figure.canvas
 
         self._refresh_data()
@@ -119,13 +122,13 @@ class Window(object):
         self._plot_data()
 
     def on_select(self, verts):
+        verts = self._polar_to_cart(verts)
         path = Path(verts)
         self._ind = np.nonzero(path.contains_points(self._xys))[0]
         self._fc[:, -1] = self._alpha_other
         self._fc[self._ind, -1] = 1
         self._collection.set_facecolors(self._fc)
         self._canvas.draw_idle()
-
         X = []
         y = []
         for row in self._data.itertuples():
@@ -144,13 +147,25 @@ class Window(object):
             print("all csv has been read")
             exit()
 
+    def _polar_to_cart(self,pts): 
+        import math
+        new_pts = []
+        for point in pts: 
+            theta = point[0]
+            r = point[1]
+            x = math.cos(theta)*r
+            y = math.sin(theta)*r
+            new_pts.append([x,y])
+        return new_pts
+
+
     def _plot_data(self): 
         self._plot_clear()
         self._ax.set_title(self._dataset.get_current_file_path())
         pts = self._ax.scatter(self._data.iloc[:,0],self._data.iloc[:,1])
 
         self._collection = pts
-        self._xys = self._collection.get_offsets()
+        self._xys = self._polar_to_cart(self._collection.get_offsets())
         self._n_pts = len(self._xys)
 
         self._fc = self._collection.get_facecolors()
