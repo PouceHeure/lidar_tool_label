@@ -30,6 +30,8 @@ class DataLabel(object):
 
 class Dataset(object): 
 
+    LIMIT_R = 4
+
     def __init__(self,folder_path):
         self._folder_path = folder_path
         self._files_path = self._load_files_path(folder_path)
@@ -52,7 +54,8 @@ class Dataset(object):
     def get_current_file_path(self): 
         return self._current_file_path
 
-    def next(self,rnd=False):
+    def next(self,rnd=False,full_data=False):
+
         if(len(self._files_path) == 0):
             return pd.DataFrame()
         file_path = self._files_path[0]
@@ -60,9 +63,18 @@ class Dataset(object):
             file_path = random.choice(self._files_path)
         self._current_file_path = file_path
         self._files_path.remove(file_path)
-        df = pd.read_csv(file_path,header=None,delimiter=';')
-        df = df[~ (df.iloc[:, 1] >= 4)]  
-        return df 
+
+        import csv
+        points = []
+        with open(self._current_file_path, newline='') as csvfile:
+            spamreader = csv.reader(csvfile, delimiter=';', quotechar='|')
+            for row in spamreader:
+                theta = float(row[0])
+                r = float(row[1])
+                if(full_data or r < Dataset.LIMIT_R):
+                    points.append([theta,r])
+
+        return points 
 
     def __repr__(self): 
         return "\n".join(self._files_path)
@@ -131,17 +143,19 @@ class Window(object):
         self._canvas.draw_idle()
         X = []
         y = []
-        for row in self._data.itertuples():
+        for i in range(len(self._xys)):
+            row = self._data[i]
+            print(row)
             _y =LABEL_DATA_UNSELECTED
-            if(row[0] in self._ind): 
+            if(i in self._ind): 
                 _y = LABEL_DATA_SELECTED
-            X.append([row[1],row[2]])
+            X.append([row[0],row[1]])
             y.append(_y)
         self._controller.create_data(X,y)
 
     def _update_data(self): 
         data = self._dataset.next()
-        if(not data.empty):
+        if(len(data) != 0):
             self._data = data
         else: 
             print("all csv has been read")
@@ -162,7 +176,9 @@ class Window(object):
     def _plot_data(self): 
         self._plot_clear()
         self._ax.set_title(self._dataset.get_current_file_path())
-        pts = self._ax.scatter(self._data.iloc[:,0],self._data.iloc[:,1])
+        thetas = [row[0] for row in self._data]
+        rs = [row[1] for row in self._data]
+        pts = self._ax.scatter(thetas,rs)
 
         self._collection = pts
         self._xys = self._polar_to_cart(self._collection.get_offsets())
