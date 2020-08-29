@@ -57,7 +57,7 @@ class Dataset(object):
     def next(self,rnd=False,full_data=False):
 
         if(len(self._files_path) == 0):
-            return pd.DataFrame()
+            return None 
         file_path = self._files_path[0]
         if(rnd): 
             file_path = random.choice(self._files_path)
@@ -155,7 +155,7 @@ class Window(object):
 
     def _update_data(self): 
         data = self._dataset.next()
-        if(len(data) != 0):
+        if(data != None):
             self._data = data
         else: 
             print("all csv has been read")
