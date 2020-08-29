@@ -145,7 +145,6 @@ class Window(object):
         y = []
         for i in range(len(self._xys)):
             row = self._data[i]
-            print(row)
             _y =LABEL_DATA_UNSELECTED
             if(i in self._ind): 
                 _y = LABEL_DATA_SELECTED
